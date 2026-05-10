@@ -40,7 +40,10 @@ class LocalVoiceRecognizer(
         override fun onEvent(eventType: Int, params: Bundle?) {}
         override fun onError(error: Int) {
           val canRetry = error == SpeechRecognizer.ERROR_CLIENT ||
-                         error == SpeechRecognizer.ERROR_SERVER
+                         error == SpeechRecognizer.ERROR_SERVER ||
+                         error == SpeechRecognizer.ERROR_AUDIO ||
+                         error == SpeechRecognizer.ERROR_NETWORK ||
+                         error == SpeechRecognizer.ERROR_NETWORK_TIMEOUT
           if (canRetry && retryCount < maxRetries) {
             retryCount++
             android.util.Log.d("LocalVoiceRecognizer", "Retry attempt $retryCount")
@@ -56,6 +59,7 @@ class LocalVoiceRecognizer(
             SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Sin permisos de micrófono"
             SpeechRecognizer.ERROR_CLIENT -> "Error del cliente"
             SpeechRecognizer.ERROR_SERVER -> "Error del servidor"
+            SpeechRecognizer.ERROR_AUDIO -> "Error de audio"
             else -> "Error de reconocimiento: $error"
           }
           onError(msg)
