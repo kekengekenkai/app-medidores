@@ -180,6 +180,15 @@ class MainActivity : ComponentActivity() {
         onError = { msg ->
           android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_LONG).show()
           currentDictateIndex = null
+        },
+        onFallback = {
+          android.util.Log.d("MainActivity", "local failed, falling back to online")
+          val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_PROMPT, prompt)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "es-ES")
+          }
+          voiceLauncher.launch(intent)
         }
       )
       localRecognizer?.start(prompt)
@@ -208,6 +217,16 @@ class MainActivity : ComponentActivity() {
         onResult = { spoken -> handleXlsxVoiceResult(spoken, index) },
         onError = { msg ->
           android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_LONG).show()
+        },
+        onFallback = {
+          android.util.Log.d("MainActivity", "local failed, falling back to online")
+          dictatingXlsxRow = index
+          val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_PROMPT, prompt)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "es-ES")
+          }
+          voiceLauncher.launch(intent)
         }
       )
       localRecognizer?.start(prompt)
@@ -331,6 +350,14 @@ class MainActivity : ComponentActivity() {
       onError = { msg ->
         android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_LONG).show()
         currentDictateIndex = null
+      },
+      onFallback = {
+        android.util.Log.d("MainActivity", "fallback: using online recognition")
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+          putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+          putExtra(RecognizerIntent.EXTRA_LANGUAGE, "es-ES")
+        }
+        voiceLauncher.launch(intent)
       }
     )
 
