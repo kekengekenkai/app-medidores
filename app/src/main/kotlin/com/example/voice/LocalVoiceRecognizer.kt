@@ -53,6 +53,7 @@ class LocalVoiceRecognizer(
     }
     val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
       putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+      putExtra(RecognizerIntent.EXTRA_LANGUAGE, "es-ES")
       putExtra(RecognizerIntent.EXTRA_PROMPT, prompt)
       putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
       putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
