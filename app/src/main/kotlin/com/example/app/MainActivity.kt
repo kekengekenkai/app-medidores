@@ -2,15 +2,12 @@ package com.example.app
 
 import android.content.Intent
 import android.os.Bundle
-import android.Manifest
-import android.content.pm.PackageManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import android.app.Activity.RESULT_OK
 import android.net.Uri
-import androidx.core.content.ContextCompat
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -64,8 +61,6 @@ class MainActivity : ComponentActivity() {
   private lateinit var prefs: PrefsHelper
   private lateinit var importLauncher: ActivityResultLauncher<Array<String>>
   private lateinit var voiceLauncher: ActivityResultLauncher<Intent>
-  private lateinit var micPermissionLauncher: ActivityResultLauncher<String>
-  private var pendingMicRequest = false
   private val books = mutableStateListOf<WorkbookInfo>()
   private val selectedBook = mutableStateOf<WorkbookInfo?>(null)
   private val dropdownExpanded = mutableStateOf(false)
@@ -154,23 +149,13 @@ class MainActivity : ComponentActivity() {
     }
   }
 
-  private fun ensureMicPermission(): Boolean {
-    if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-      pendingMicRequest = true
-      micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-      return false
-    }
-    return true
-  }
-
   private fun startDictationForIndex(index: Int) {
     if (index < 0 || index >= metricsList.size) return
-    val useLocal = prefs.useLocalRecognition()
-    if (useLocal && !ensureMicPermission()) return
     currentDictateIndex = index
     val name = metricsList.getOrNull(index)?.name ?: "item"
     val prompt = "Dicta valor de Actual para $name"
     prefs.saveLastDictationIndex(selectedBook.value?.uri ?: "", index)
+    val useLocal = prefs.useLocalRecognition()
     android.util.Log.d("MainActivity", "startDictationForIndex: useLocal=$useLocal")
     if (useLocal) {
       localRecognizer?.destroy()
@@ -199,7 +184,6 @@ class MainActivity : ComponentActivity() {
     val name = rowsState.getOrNull(index)?.name ?: "item"
     val prompt = "Dicta valor de Actual para $name"
     val useLocal = prefs.useLocalRecognition()
-    if (useLocal && !ensureMicPermission()) return
     android.util.Log.d("MainActivity", "startDictationForXlsxRow: useLocal=$useLocal")
     if (useLocal) {
       localRecognizer?.destroy()
@@ -353,15 +337,6 @@ class MainActivity : ComponentActivity() {
         val texts = result.data!!.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
         val spoken = texts?.firstOrNull() ?: ""
         handleVoiceResult(spoken)
-      }
-    }
-
-    micPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-      pendingMicRequest = false
-      if (granted) {
-        android.util.Log.d("MainActivity", "Mic permission granted")
-      } else {
-        android.widget.Toast.makeText(this, "Permiso de micrófono denegado", android.widget.Toast.LENGTH_LONG).show()
       }
     }
 
@@ -558,23 +533,21 @@ class MainActivity : ComponentActivity() {
                 }
               }
             }
-            if (selectedBook.value != null) {
-              Spacer(Modifier.height(8.dp))
-              Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = {
-                  val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                    putExtra(RecognizerIntent.EXTRA_PROMPT, "Diga el valor de Actual")
-                  }
-                  voiceLauncher.launch(intent)
-                }) {
-                  Text("Grabar")
+            Spacer(Modifier.height(8.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+              Button(onClick = {
+                val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                  putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                  putExtra(RecognizerIntent.EXTRA_PROMPT, "Diga el valor de Actual")
                 }
-                Button(onClick = {
-                  saveCurrentBook()
-                }) {
-                  Text("Guardar")
-                }
+                voiceLauncher.launch(intent)
+              }) {
+                Text("Grabar")
+              }
+              Button(onClick = {
+                saveCurrentBook()
+              }) {
+                Text("Guardar")
               }
             }
           }
