@@ -118,4 +118,12 @@ class PrefsHelper(private val context: Context) {
   fun useLocalRecognition(): Boolean {
     return prefs.getBoolean("use_local_recognition", false)
   }
+
+  fun saveLocalRecognizerType(type: Int) {
+    prefs.edit().putInt("local_recognizer_type", type).apply()
+  }
+
+  fun loadLocalRecognizerType(): Int {
+    return prefs.getInt("local_recognizer_type", 1)
+  }
 }

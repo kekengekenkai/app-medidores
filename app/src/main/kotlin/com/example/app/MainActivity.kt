@@ -72,7 +72,7 @@ class MainActivity : ComponentActivity() {
   private val showManualInputDialog = mutableStateOf(false)
   private val manualInputValue = mutableStateOf("")
   private val pendingVoiceValue = mutableStateOf<Double?>(null)
-  private var localRecognizer: com.example.voice.LocalVoiceRecognizer? = null
+  private var localRecognizer: com.example.voice.VoiceRecognizer? = null
   private var dictatingXlsxRow: Int? = null
   private var isDirty = false
   private var roletePlayer: android.media.MediaPlayer? = null
@@ -156,17 +156,36 @@ class MainActivity : ComponentActivity() {
     val prompt = "Dicta valor de Actual para $name"
     prefs.saveLastDictationIndex(selectedBook.value?.uri ?: "", index)
     val useLocal = prefs.useLocalRecognition()
-    android.util.Log.d("MainActivity", "startDictationForIndex: useLocal=$useLocal")
+    val recognizerType = prefs.loadLocalRecognizerType()
+    android.util.Log.d("MainActivity", "startDictationForIndex: useLocal=$useLocal, type=$recognizerType")
     if (useLocal) {
       localRecognizer?.destroy()
-      localRecognizer = com.example.voice.LocalVoiceRecognizer(
-        this,
-        onResult = { spoken -> handleVoiceResult(spoken) },
-        onError = { msg ->
-          android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_LONG).show()
-          currentDictateIndex = null
-        }
-      )
+      localRecognizer = when (recognizerType) {
+        1 -> com.example.voice.LocalVoiceRecognizer(
+          this,
+          onResult = { spoken -> handleVoiceResult(spoken) },
+          onError = { msg ->
+            android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_LONG).show()
+            currentDictateIndex = null
+          }
+        )
+        2 -> com.example.voice.LocalVoiceRecognizer2(
+          this,
+          onResult = { spoken -> handleVoiceResult(spoken) },
+          onError = { msg ->
+            android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_LONG).show()
+            currentDictateIndex = null
+          }
+        )
+        else -> com.example.voice.LocalVoiceRecognizer3(
+          this,
+          onResult = { spoken -> handleVoiceResult(spoken) },
+          onError = { msg ->
+            android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_LONG).show()
+            currentDictateIndex = null
+          }
+        )
+      }
       localRecognizer?.start(prompt)
     } else {
       val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
@@ -184,16 +203,33 @@ class MainActivity : ComponentActivity() {
     val name = rowsState.getOrNull(index)?.name ?: "item"
     val prompt = "Dicta valor de Actual para $name"
     val useLocal = prefs.useLocalRecognition()
-    android.util.Log.d("MainActivity", "startDictationForXlsxRow: useLocal=$useLocal")
+    val recognizerType = prefs.loadLocalRecognizerType()
+    android.util.Log.d("MainActivity", "startDictationForXlsxRow: useLocal=$useLocal, type=$recognizerType")
     if (useLocal) {
       localRecognizer?.destroy()
-      localRecognizer = com.example.voice.LocalVoiceRecognizer(
-        this,
-        onResult = { spoken -> handleXlsxVoiceResult(spoken, index) },
-        onError = { msg ->
-          android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_LONG).show()
-        }
-      )
+      localRecognizer = when (recognizerType) {
+        1 -> com.example.voice.LocalVoiceRecognizer(
+          this,
+          onResult = { spoken -> handleXlsxVoiceResult(spoken, index) },
+          onError = { msg ->
+            android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_LONG).show()
+          }
+        )
+        2 -> com.example.voice.LocalVoiceRecognizer2(
+          this,
+          onResult = { spoken -> handleXlsxVoiceResult(spoken, index) },
+          onError = { msg ->
+            android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_LONG).show()
+          }
+        )
+        else -> com.example.voice.LocalVoiceRecognizer3(
+          this,
+          onResult = { spoken -> handleXlsxVoiceResult(spoken, index) },
+          onError = { msg ->
+            android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_LONG).show()
+          }
+        )
+      }
       localRecognizer?.start(prompt)
     } else {
       dictatingXlsxRow = index
@@ -309,14 +345,33 @@ class MainActivity : ComponentActivity() {
     prefs = PrefsHelper(this)
     loadLastBookIfRecent()
 
-    localRecognizer = com.example.voice.LocalVoiceRecognizer(
-      this,
-      onResult = { spoken -> handleVoiceResult(spoken) },
-      onError = { msg ->
-        android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_LONG).show()
-        currentDictateIndex = null
-      }
-    )
+    val type = prefs.loadLocalRecognizerType()
+    localRecognizer = when (type) {
+      2 -> com.example.voice.LocalVoiceRecognizer2(
+        this,
+        onResult = { spoken -> handleVoiceResult(spoken) },
+        onError = { msg ->
+          android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_LONG).show()
+          currentDictateIndex = null
+        }
+      )
+      3 -> com.example.voice.LocalVoiceRecognizer3(
+        this,
+        onResult = { spoken -> handleVoiceResult(spoken) },
+        onError = { msg ->
+          android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_LONG).show()
+          currentDictateIndex = null
+        }
+      )
+      else -> com.example.voice.LocalVoiceRecognizer(
+        this,
+        onResult = { spoken -> handleVoiceResult(spoken) },
+        onError = { msg ->
+          android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_LONG).show()
+          currentDictateIndex = null
+        }
+      )
+    }
 
     importLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
       uri?.let {
@@ -350,6 +405,7 @@ class MainActivity : ComponentActivity() {
         val bookDropdownExpanded = remember { mutableStateOf(false) }
         val settingsDropdownExpanded = remember { mutableStateOf(false) }
         val useLocalRecog = remember { mutableStateOf(prefs.useLocalRecognition()) }
+        val recognizerType = remember { mutableStateOf(prefs.loadLocalRecognizerType()) }
         val listState = rememberLazyListState()
         val shareDialog = remember { mutableStateOf(false) }
         val shareSelectedUris = remember { mutableStateOf(setOf<String>()) }
@@ -454,6 +510,24 @@ class MainActivity : ComponentActivity() {
                             prefs.saveUseLocalRecognition(it)
                             android.util.Log.d("MainActivity", "Reconocimiento local cambiado a: $it")
                           })
+                        }
+                      },
+                      onClick = {}
+                    )
+                    DropdownMenuItem(
+                      text = {
+                        Column {
+                          Text("Tipo reconocedor", style = MaterialTheme.typography.bodyLarge)
+                          Row {
+                            listOf(1 to "Opción 1", 2 to "Opción 2", 3 to "Opción 3").forEach { (type, label) ->
+                              TextButton(onClick = {
+                                recognizerType.value = type
+                                prefs.saveLocalRecognizerType(type)
+                              }) {
+                                Text(label, color = if (recognizerType.value == type) Color.Blue else Color.Gray)
+                              }
+                            }
+                          }
                         }
                       },
                       onClick = {}
@@ -663,12 +737,12 @@ class MainActivity : ComponentActivity() {
                   onClick = {
                     val uris = shareSelectedUris.value.map { android.net.Uri.parse(it) }
                     if (uris.isNotEmpty()) {
-                      val intent = android.content.Intent(android.content.Intent.ACTION_SEND_MULTIPLE).apply {
-                        type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                      val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND_MULTIPLE).apply {
+                        this.type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                         putParcelableArrayListExtra(android.content.Intent.EXTRA_STREAM, ArrayList(uris))
                         addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
                       }
-                      startActivity(android.content.Intent.createChooser(intent, "Compartir"))
+                      startActivity(android.content.Intent.createChooser(shareIntent, "Compartir"))
                     }
                     shareDialog.value = false
                   },

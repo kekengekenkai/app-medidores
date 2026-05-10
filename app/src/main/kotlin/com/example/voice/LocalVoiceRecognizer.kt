@@ -12,14 +12,15 @@ class LocalVoiceRecognizer(
   private val context: Context,
   private val onResult: (String) -> Unit,
   private val onError: (String) -> Unit
-) {
+) : VoiceRecognizer {
   private var speechRecognizer: SpeechRecognizer? = null
 
-  fun start(prompt: String = "Dicta el valor") {
+  override fun start(prompt: String) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
       onError("Reconocimiento local requiere Android 12+")
       return
     }
+    val finalPrompt = if (prompt.isEmpty()) "Dicta el valor" else prompt
     speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context).apply {
       setRecognitionListener(object : RecognitionListener {
         override fun onReadyForSpeech(params: Bundle?) {}
@@ -53,7 +54,7 @@ class LocalVoiceRecognizer(
     }
     val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
       putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-      putExtra(RecognizerIntent.EXTRA_PROMPT, prompt)
+      putExtra(RecognizerIntent.EXTRA_PROMPT, finalPrompt)
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
         putExtra("android.speech.extra.PREFER_OFFLINE", true)
       }
@@ -66,7 +67,7 @@ class LocalVoiceRecognizer(
     destroy()
   }
 
-  fun destroy() {
+  override fun destroy() {
     speechRecognizer?.destroy()
     speechRecognizer = null
   }
